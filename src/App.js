@@ -6,7 +6,7 @@ import { LogOut, PlusCircle, Search, Download, Edit, Trash2, X, ChevronLeft, Che
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const API_BASE_URL = process.env.API_BASE_URL;
+const API_BASE_URL = 'https://mbc-be.vercel.app';
 
 // --- Utility Functions ---
 const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
