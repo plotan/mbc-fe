@@ -6,7 +6,12 @@ import { LogOut, PlusCircle, Search, Download, Edit, Trash2, X, ChevronLeft, Che
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+
+// In App.js
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+
+
 
 // --- Utility Functions ---
 const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -240,6 +245,7 @@ const Membership = ({ members, setMembers, bookings }) => {
     const [deletingMember, setDeletingMember] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState('');
+    
 
     const activeMembers = useMemo(() => {
         const activeCourtNames = bookings.filter(b => getBookingStatus(b) === 'Open').map(b => b.court_name);
@@ -317,7 +323,15 @@ const Membership = ({ members, setMembers, bookings }) => {
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50"><tr className="border-b border-gray-200"><th className="p-4 text-left font-semibold text-gray-600">Name</th><th className="p-4 text-left font-semibold text-gray-600">Court</th><th className="p-4 text-left font-semibold text-gray-600">Individual Cost</th><th className="p-4 text-left font-semibold text-gray-600">Status</th><th className="p-4 text-left font-semibold text-gray-600">Actions</th></tr></thead>
                     <tbody className="divide-y divide-gray-200">
-                        {filteredMembers.map(member => (<tr key={member.id} className="hover:bg-gray-50 transition-colors"><td className="p-4 font-medium text-gray-800">{member.name}</td><td className="p-4 text-gray-600">{member.court_name}</td><td className="p-4 text-gray-600 font-medium">{formatCurrency(member.individualCost)}</td><td className="p-4"><span className={`px-2.5 py-1 rounded-full font-medium text-xs ${member.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>{member.status}</span></td><td className="p-4 flex gap-2"><button onClick={() => { setEditingMember(member); setError(''); setShowModal(true); }} className="text-gray-500 hover:text-indigo-600 p-1.5 rounded-md hover:bg-gray-100"><Edit size={16}/></button><button onClick={() => setDeletingMember(member)} className="text-gray-500 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50"><Trash2 size={16}/></button></td></tr>))}
+                        {filteredMembers.map(member => (<tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="p-4 font-medium text-gray-800">
+                                    <div className="flex items-center gap-2">
+                                        {member.gender === 'Male' ? <Mars size={16} className="text-blue-500"/> : <Venus size={16} className="text-pink-500"/>}
+                                        <span>{member.name}</span>
+                                    </div>
+                                </td>
+                        <td className="p-4 text-gray-600">{member.court_name}</td>
+                        <td className="p-4 text-gray-600 font-medium">{formatCurrency(member.individualCost)}</td><td className="p-4"><span className={`px-2.5 py-1 rounded-full font-medium text-xs ${member.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>{member.status}</span></td><td className="p-4 flex gap-2"><button onClick={() => { setEditingMember(member); setError(''); setShowModal(true); }} className="text-gray-500 hover:text-indigo-600 p-1.5 rounded-md hover:bg-gray-100"><Edit size={16}/></button><button onClick={() => setDeletingMember(member)} className="text-gray-500 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50"><Trash2 size={16}/></button></td></tr>))}
                     </tbody>
                 </table>
             </div>
@@ -326,44 +340,193 @@ const Membership = ({ members, setMembers, bookings }) => {
         </div>
     );
 };
-const Booking = ({ bookings, setBookings }) => {
+const Booking = ({ bookings, setBookings, members }) => {
     const [showModal, setShowModal] = useState(false);
     const [editingBooking, setEditingBooking] = useState(null);
     const [deletingBooking, setDeletingBooking] = useState(null);
+    // State for the member list modal
+    const [viewingMembersFor, setViewingMembersFor] = useState(null);
+    const [error, setError] = useState('');
+
 
     const handleFormSubmit = async (e) => {
         e.preventDefault();
+        setError(''); // Clear previous errors
         const formData = new FormData(e.target);
-        const bookingData = { court_name: formData.get('court_name'), location: formData.get('location'), start_date: formData.get('start_date'), end_date: formData.get('end_date'), cost: parseFloat(formData.get('cost')), max_members: parseInt(formData.get('max_members')) };
+        // Get all field values from the form, including new ones
+        const bookingData = {
+            court_name: formData.get('court_name'),
+            location: formData.get('location'),
+            start_date: formData.get('start_date'),
+            end_date: formData.get('end_date'),
+            cost: parseFloat(formData.get('cost')),
+            max_members: parseInt(formData.get('max_members')),
+            day: formData.get('day'),
+            start_hour: formData.get('start_hour'),
+            end_hour: formData.get('end_hour'),
+            maps_url: formData.get('maps_url')
+        };
 
         try {
+            let response;
             if (editingBooking) {
-                const response = await fetch(`${API_BASE_URL}/api/bookings/${editingBooking.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookingData) });
-                const updatedBooking = await response.json();
-                setBookings(bookings.map(b => b.id === editingBooking.id ? updatedBooking : b));
+                response = await fetch(`${API_BASE_URL}/api/bookings/${editingBooking.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookingData) });
             } else {
-                const response = await fetch(`${API_BASE_URL}/api/bookings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookingData) });
-                const newBooking = await response.json();
-                setBookings([newBooking, ...bookings]);
+                response = await fetch(`${API_BASE_URL}/api/bookings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookingData) });
             }
-        } catch (error) { console.error("Error saving booking:", error); } finally { setShowModal(false); setEditingBooking(null); }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.details || 'Failed to save booking.');
+            }
+
+            const savedBooking = await response.json();
+
+            if (editingBooking) {
+                setBookings(bookings.map(b => b.id === editingBooking.id ? savedBooking : b));
+            } else {
+                setBookings([savedBooking, ...bookings]);
+            }
+
+            setShowModal(false);
+            setEditingBooking(null);
+
+        } catch (error) {
+            console.error("Error saving booking:", error);
+            setError(error.message);
+        }
     };
+
     const handleDelete = async () => {
         if (!deletingBooking) return;
         try {
             await fetch(`${API_BASE_URL}/api/bookings/${deletingBooking.id}`, { method: 'DELETE' });
             setBookings(bookings.filter(b => b.id !== deletingBooking.id));
-        } catch (error) { console.error("Error deleting booking:", error); } finally { setDeletingBooking(null); }
+        } catch (error) {
+            console.error("Error deleting booking:", error);
+            // Optionally, set an error state to show in a toast/notification
+        } finally {
+            setDeletingBooking(null);
+        }
     };
-    
+
+    // Find members for the selected booking using useMemo for efficiency
+    const membersInSelectedBooking = useMemo(() => {
+        if (!viewingMembersFor) return [];
+        return members.filter(m => m.booking_id === viewingMembersFor.id);
+    }, [viewingMembersFor, members]);
+
     return (
         <div className="p-4 sm:p-6 md:p-8">
-            <PageHeader title="Court Bookings" onButtonClick={() => { setEditingBooking(null); setShowModal(true); }} buttonText="Add Booking" />
+            <PageHeader title="Court Bookings" onButtonClick={() => { setEditingBooking(null); setError(''); setShowModal(true); }} buttonText="Add Booking" />
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {bookings.map(booking => { const status = getBookingStatus(booking); return (<div key={booking.id} className="bg-white p-5 rounded-xl border border-gray-200 group"><div className="flex justify-between items-start"><h3 className="text-lg font-bold text-gray-800">{booking.court_name}</h3><div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingBooking(booking); setShowModal(true); }} className="text-gray-500 hover:text-indigo-600 p-1.5 rounded-md hover:bg-gray-100"><Edit size={16}/></button><button onClick={() => setDeletingBooking(booking)} className="text-gray-500 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50"><Trash2 size={16}/></button></div></div><p className="text-sm text-gray-500 mb-4">{booking.location}</p><div className="mt-4 pt-4 border-t border-gray-100 text-sm space-y-2"><p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Period:</span> <span className="text-gray-800 font-medium">{formatDate(booking.start_date)} - {formatDate(booking.end_date)}</span></p><p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Total Cost:</span> <span className="text-gray-800 font-medium">{formatCurrency(booking.cost)}</span></p><p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Max Members:</span> <span className="text-gray-800 font-medium flex items-center gap-1"><Users size={14}/>{booking.max_members}</span></p><p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Status:</span><span className={`px-2.5 py-1 rounded-full font-medium text-xs ${status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{status}</span></p></div></div>)})}
+                {bookings.map(booking => {
+                    const status = getBookingStatus(booking);
+                    return (
+                        <div key={booking.id} className="bg-white p-5 rounded-xl border border-gray-200 group flex flex-col">
+                            <div className="flex justify-between items-start">
+                                <h3 className="text-lg font-bold text-gray-800">{booking.court_name}</h3>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => { setEditingBooking(booking); setError(''); setShowModal(true); }} className="text-gray-500 hover:text-indigo-600 p-1.5 rounded-md hover:bg-gray-100"><Edit size={16}/></button>
+                                    <button onClick={() => setDeletingBooking(booking)} className="text-gray-500 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">{booking.location}</p>
+                            <div className="mt-4 pt-4 border-t border-gray-100 text-sm space-y-2">
+                                <p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Period:</span> <span className="text-gray-800 font-medium">{formatDate(booking.start_date)} - {formatDate(booking.end_date)}</span></p>
+                                <p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Total Cost:</span> <span className="text-gray-800 font-medium">{formatCurrency(booking.cost)}</span></p>
+                                <p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Max Members:</span> <span className="text-gray-800 font-medium flex items-center gap-1"><Users size={14}/>{booking.max_members}</span></p>
+                                <p className="flex items-center justify-between"><span className="font-semibold text-gray-600">Status:</span><span className={`px-2.5 py-1 rounded-full font-medium text-xs ${status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{status}</span></p>
+                                {/* Display new fields */}
+                                {booking.day && booking.start_hour && (
+                                     <p className="flex items-center justify-between">
+                                        <span className="font-semibold text-gray-600 flex items-center gap-1.5"><Clock size={14}/> Schedule:</span>
+                                        <span className="text-gray-800 font-medium">{booking.day}, {booking.start_hour.substring(0,5)} - {booking.end_hour.substring(0,5)}</span>
+                                    </p>
+                                )}
+                                {booking.maps_url && (
+                                     <p className="flex items-center justify-between">
+                                        <span className="font-semibold text-gray-600">Maps:</span>
+                                        <a href={booking.maps_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-medium">View Location</a>
+                                    </p>
+                                )}
+                            </div>
+                             {/* Add View Members button */}
+                             <div className="mt-auto pt-4">
+                                <button
+                                    onClick={() => setViewingMembersFor(booking)}
+                                    className="w-full bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-100 font-semibold text-sm flex items-center justify-center gap-2">
+                                    <Users size={16} /> View Members
+                                </button>
+                            </div>
+                        </div>
+                    )
+                })}
             </div>
-            {showModal && <Modal onClose={() => { setShowModal(false); setEditingBooking(null); }} title={editingBooking ? 'Edit Booking' : 'Add New Booking'}><form onSubmit={handleFormSubmit} className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-700 mb-1">Court Name</label><input type="text" name="court_name" defaultValue={editingBooking?.court_name} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Location</label><input type="text" name="location" defaultValue={editingBooking?.location} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label><input type="date" name="start_date" defaultValue={editingBooking?.start_date.split('T')[0]} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1">End Date</label><input type="date" name="end_date" defaultValue={editingBooking?.end_date.split('T')[0]} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Total Cost (Rp)</label><input type="number" name="cost" defaultValue={editingBooking?.cost} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Max Members</label><input type="number" name="max_members" defaultValue={editingBooking?.max_members} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div></div><div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => { setShowModal(false); setEditingBooking(null); }} className="bg-gray-100 text-gray-800 px-5 py-2.5 rounded-lg font-semibold text-sm">Cancel</button><button type="submit" className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-semibold text-sm">Save</button></div></form></Modal>}
+            {showModal && (
+                 <Modal onClose={() => { setShowModal(false); setEditingBooking(null); }} title={editingBooking ? 'Edit Booking' : 'Add New Booking'}>
+                    <form onSubmit={handleFormSubmit} className="space-y-4">
+                        {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">{error}</div>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Court Name</label><input type="text" name="court_name" defaultValue={editingBooking?.court_name} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Location</label><input type="text" name="location" defaultValue={editingBooking?.location} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label><input type="date" name="start_date" defaultValue={editingBooking?.start_date.split('T')[0]} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">End Date</label><input type="date" name="end_date" defaultValue={editingBooking?.end_date.split('T')[0]} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Total Cost (Rp)</label><input type="number" name="cost" defaultValue={editingBooking?.cost} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Max Members</label><input type="number" name="max_members" defaultValue={editingBooking?.max_members} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div>
+                            {/* Add new form fields */}
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                                <select name="day" defaultValue={editingBooking?.day} className="w-full p-2.5 border border-gray-300 rounded-lg bg-white" required>
+                                    <option value="">Select a Day</option>
+                                    <option>Sunday</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option>
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Maps URL</label>
+                                <input type="url" name="maps_url" placeholder="https://maps.app.goo.gl/..." defaultValue={editingBooking?.maps_url} className="w-full p-2.5 border border-gray-300 rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Hour</label>
+                                <input type="time" name="start_hour" defaultValue={editingBooking?.start_hour} className="w-full p-2.5 border border-gray-300 rounded-lg" required />
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">End Hour</label>
+                                <input type="time" name="end_hour" defaultValue={editingBooking?.end_hour} className="w-full p-2.5 border border-gray-300 rounded-lg" required />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4">
+                            <button type="button" onClick={() => { setShowModal(false); setEditingBooking(null); }} className="bg-gray-100 text-gray-800 px-5 py-2.5 rounded-lg font-semibold text-sm">Cancel</button>
+                            <button type="submit" className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-semibold text-sm">Save</button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
             {deletingBooking && <ConfirmationModal title="Delete Booking" message={`Are you sure you want to delete the booking for ${deletingBooking.court_name}?`} onConfirm={handleDelete} onCancel={() => setDeletingBooking(null)} />}
+
+            {/* Modal to display the list of members for a booking */}
+            {viewingMembersFor && (
+                <Modal onClose={() => setViewingMembersFor(null)} title={`Members in ${viewingMembersFor.court_name}`}>
+                    {membersInSelectedBooking.length > 0 ? (
+                        <ul className="space-y-3 max-h-80 overflow-y-auto">
+                            {membersInSelectedBooking.map(member => (
+                                <li key={member.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                         {member.gender === 'Male' ? <Mars size={16} className="text-blue-500"/> : <Venus size={16} className="text-pink-500"/>}
+                                        <span className="font-medium text-gray-800">{member.name}</span>
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-full font-medium text-xs ${member.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>{member.status}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-center text-gray-500 py-4">No members have been assigned to this booking yet.</p>
+                    )}
+                     <div className="flex justify-end pt-6">
+                        <button type="button" onClick={() => setViewingMembersFor(null)} className="bg-gray-100 text-gray-800 px-5 py-2.5 rounded-lg font-semibold text-sm">Close</button>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };
@@ -1207,7 +1370,7 @@ export default function App() {
         switch (page) {
             case 'dashboard': return <Dashboard members={members} bookings={bookings} transactions={transactions} tournaments={tournaments}/>;
             case 'membership': return <Membership members={members} setMembers={setMembers} bookings={bookings} />;
-            case 'booking': return <Booking bookings={bookings} setBookings={setBookings} />;
+            case 'booking': return <Booking bookings={bookings} setBookings={setBookings} members={members} />;
             case 'tournaments': return <Tournament tournaments={tournaments} setTournaments={setTournaments} members={members} />;
             case 'scoreboard': return <ScoreCounter />;
             case 'cashflow': return <Cashflow transactions={transactions} setTransactions={setTransactions} />;

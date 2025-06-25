@@ -76,3 +76,10 @@ CREATE TABLE admins (
 -- The password 'adminpass' was hashed using bcrypt.
 -- You should generate your own hash on the server when creating a user.
 INSERT INTO admins (username, password_hash) VALUES ('admin', '$2a$10$f5.j9G9hG1L5a2f8j/o1U.V1ZzE7Y9E0s1XzG2r3s4c5D6e7F8g9h');
+
+-- Add new columns to the bookings table for enhanced details
+ALTER TABLE bookings
+ADD COLUMN day VARCHAR(50),
+ADD COLUMN start_hour TIME WITHOUT TIME ZONE,
+ADD COLUMN end_hour TIME WITHOUT TIME ZONE,
+ADD COLUMN maps_url TEXT;
