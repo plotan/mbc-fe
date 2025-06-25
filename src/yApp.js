@@ -1,12 +1,8 @@
-///
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { LogOut, PlusCircle, Search, Download, Edit, Trash2, X, ChevronLeft, ChevronRight, User, Calendar, BarChart2, DollarSign, Users, Clock, Trophy, Shuffle, Mars, Venus, UserPlus, ClipboardList, RotateCw, Minus, Menu } from 'lucide-react';
-// Add these lines at the top of App.js
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { LogOut, PlusCircle, Search, Download, Edit, Trash2, X, ChevronLeft, ChevronRight, User, Calendar, BarChart2, DollarSign, Users, Clock, Trophy, Shuffle, Mars, Venus, UserPlus, ClipboardList, RotateCw, Minus } from 'lucide-react';
 
-const API_BASE_URL = process.env.API_BASE_URL;
+const API_BASE_URL = 'http://localhost:3001';
 
 // --- Utility Functions ---
 const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -26,30 +22,7 @@ const staticCashflowChartData = [
       { month: 'May', income: 1890000, expenses: 4800000 }, { month: 'Jun', income: 2390000, expenses: 3800000 },
 ];
 const teamNamePool = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet', 'Kilo', 'Lima', 'Mike', 'November', 'Oscar', 'Papa'];
-// NEW: Add this reusable StatCard component before the Dashboard component.
-const StatCard = ({ title, value, icon, link, colorClass }) => {
-    const colors = {
-        indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'hover:border-indigo-300' },
-        green: { bg: 'bg-green-100', text: 'text-green-600', border: 'hover:border-green-300' },
-        blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'hover:border-blue-300' },
-        orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'hover:border-orange-300' },
-    };
-    const selectedColor = colors[colorClass] || colors.indigo;
 
-    return (
-        <a href={link} className={`block bg-white p-4 rounded-xl border border-gray-200 transition-all shadow-sm hover:shadow-lg ${selectedColor.border}`}>
-            <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedColor.bg}`}>
-                    {React.cloneElement(icon, { className: selectedColor.text, size: 24 })}
-                </div>
-                <div>
-                    <h3 className="font-semibold text-gray-500 text-sm">{title}</h3>
-                    <p className="text-2xl font-bold text-gray-800">{value}</p>
-                </div>
-            </div>
-        </a>
-    );
-};
 // --- Reusable Components ---
 const Modal = ({ children, onClose, title, size = 'md' }) => {
     const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl', '2xl': 'max-w-2xl' };
@@ -82,93 +55,55 @@ const PageHeader = ({ title, onButtonClick, buttonText, children }) => (
 );
 
 // --- Core App Components ---
-
-// MODIFIED: Sidebar component is updated for mobile overlay behavior
 const Sidebar = ({ page, handleLogout, isOpen, setIsOpen }) => (
-    <>
-        {/* Mobile Overlay: This appears behind the sidebar on mobile to dim the content */}
-        <div
-            onClick={() => setIsOpen(false)}
-            className={`fixed inset-0 bg-black/60 z-30 transition-opacity md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        />
-        {/* Sidebar */}
-        <div className={`
-            fixed top-0 left-0 h-full bg-white border-r border-gray-200 text-gray-700 
-            flex flex-col z-40 transition-transform duration-300 ease-in-out
-            ${/* On mobile, slide in from the left. On desktop, it's always visible */''}
-            ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0
-            ${/* On desktop, width changes. On mobile, it's a fixed width when open */''}
-            w-60 h-screen ${isOpen ? 'md:w-60' : 'md:w-20'}
-        `}>
-            <div className={`p-4 font-bold flex items-center ${isOpen ? 'justify-between' : 'justify-center'} border-b border-gray-200 h-16`}>
-                {isOpen && <a href="#dashboard" className="text-xl flex items-center gap-2">🏸 <span className="font-bold text-gray-800">Badminton</span></a>}
-                {/* This button is only visible on desktop to shrink/expand the sidebar */}
-                <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg hidden md:block">
-                    {isOpen ? <ChevronLeft /> : <ChevronRight />}
-                </button>
-            </div>
-            <nav className="mt-4 flex-1 space-y-2 px-2">
-                {[ { name: 'Dashboard', icon: BarChart2, key: 'dashboard' }, { name: 'Membership', icon: User, key: 'membership' }, { name: 'Booking', icon: Calendar, key: 'booking' }, { name: 'Tournaments', icon: Trophy, key: 'tournaments' }, { name: 'Score Board', icon: ClipboardList, key: 'scoreboard' }, { name: 'Cashflow', icon: DollarSign, key: 'cashflow' }, ].map(item => (
-                    <a href={`#${item.key}`} key={item.key} className={`flex items-center p-3 rounded-lg transition-colors duration-200 cursor-pointer ${page === item.key ? 'bg-indigo-600 text-white shadow-sm' : 'hover:bg-gray-100'}`}>
-                        <item.icon size={20} /> {(isOpen) && <span className="ml-4 font-medium">{item.name}</span>}
-                    </a>
-                ))}
-            </nav>
-            <div className="p-2 border-t border-gray-200">
-                <a onClick={handleLogout} className="flex items-center p-3 rounded-lg transition duration-200 hover:bg-red-50 text-red-600 cursor-pointer">
-                    <LogOut size={20} /> {(isOpen) && <span className="ml-4 font-medium">Logout</span>}
+    <div className={`bg-white border-r border-gray-200 text-gray-700 flex flex-col transition-all duration-300 ease-in-out ${isOpen ? 'w-60' : 'w-20'}`}>
+        <div className={`p-4 font-bold flex items-center ${isOpen ? 'justify-between' : 'justify-center'} border-b border-gray-200 h-16`}>
+            {isOpen && <a href="#dashboard" className="text-xl flex items-center gap-2">🏸 <span className="font-bold text-gray-800">Badminton</span></a>}
+            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg"> {isOpen ? <ChevronLeft /> : <ChevronRight />} </button>
+        </div>
+        <nav className="mt-4 flex-1 space-y-2 px-2">
+            {[ { name: 'Dashboard', icon: BarChart2, key: 'dashboard' }, { name: 'Membership', icon: User, key: 'membership' }, { name: 'Booking', icon: Calendar, key: 'booking' }, { name: 'Tournaments', icon: Trophy, key: 'tournaments' }, { name: 'Score Board', icon: ClipboardList, key: 'scoreboard' }, { name: 'Cashflow', icon: DollarSign, key: 'cashflow' }, ].map(item => (
+                <a href={`#${item.key}`} key={item.key} className={`flex items-center p-3 rounded-lg transition-colors duration-200 cursor-pointer ${page === item.key ? 'bg-indigo-600 text-white shadow-sm' : 'hover:bg-gray-100'}`}>
+                    <item.icon size={20} /> {isOpen && <span className="ml-4 font-medium">{item.name}</span>}
                 </a>
-            </div>
+            ))}
+        </nav>
+        <div className="p-2 border-t border-gray-200">
+            <a onClick={handleLogout} className="flex items-center p-3 rounded-lg transition duration-200 hover:bg-red-50 text-red-600 cursor-pointer"> <LogOut size={20} /> {isOpen && <span className="ml-4 font-medium">Logout</span>} </a>
         </div>
-    </>
+    </div>
 );
-
-// NEW: Header component for mobile view with a burger menu
-const Header = ({ setIsOpen }) => (
-    <header className="bg-white border-b border-gray-200 p-4 md:hidden sticky top-0 z-20">
-        <div className="flex items-center justify-between">
-            <a href="#dashboard" className="text-xl flex items-center gap-2">🏸 <span className="font-bold text-gray-800">Badminton</span></a>
-            <button onClick={() => setIsOpen(true)} className="text-gray-600 hover:text-indigo-600 p-2">
-                <Menu size={24} />
-            </button>
-        </div>
-    </header>
-);
-
-// REPLACE the existing Dashboard component with this enhanced version.
 const Dashboard = ({ members, bookings, transactions, tournaments }) => {
     const stats = useMemo(() => {
         const paidMembers = members.filter(m => m.status === 'Paid').length;
         const unpaidMembers = members.length - paidMembers;
-        const totalIncome = transactions.filter(t => t.type === 'Income').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
-        const totalExpense = transactions.filter(t => t.type === 'Expense').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
-        const netBalance = totalIncome - totalExpense;
-
         return {
             openBookings: bookings.filter(b => getBookingStatus(b) === 'Open').length,
-            totalIncome,
-            netBalance,
+            totalIncome: transactions.filter(t => t.type === 'Income').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0),
             paidMembers,
             unpaidMembers,
             memberStatusData: [ { name: 'Paid', value: paidMembers, color: '#22c55e' }, { name: 'Unpaid', value: unpaidMembers, color: '#f97316' } ]
         };
     }, [members, bookings, transactions]);
-    
-    // NEW FEATURE: Create a list of members with pending payments.
-    const unpaidMembersList = useMemo(() => {
-        return members.filter(m => m.status === 'Unpaid').slice(0, 5); // Get first 5
-    }, [members]);
 
     const cashflowChartData = useMemo(() => {
         if (!transactions || transactions.length === 0) return staticCashflowChartData;
         const dataByMonth = {};
         const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
         transactions.forEach(t => {
             const date = new Date(t.date);
             const month = date.toLocaleString('default', { month: 'short' });
-            if (!dataByMonth[month]) { dataByMonth[month] = { month, income: 0, expenses: 0 }; }
-            if (t.type === 'Income') { dataByMonth[month].income += parseFloat(t.amount || 0); } else { dataByMonth[month].expenses += parseFloat(t.amount || 0); }
+            if (!dataByMonth[month]) {
+                dataByMonth[month] = { month, income: 0, expenses: 0 };
+            }
+            if (t.type === 'Income') {
+                dataByMonth[month].income += parseFloat(t.amount || 0);
+            } else {
+                dataByMonth[month].expenses += parseFloat(t.amount || 0);
+            }
         });
+
         return Object.values(dataByMonth).sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
     }, [transactions]);
 
@@ -180,55 +115,25 @@ const Dashboard = ({ members, bookings, transactions, tournaments }) => {
     }, [members, transactions, tournaments]);
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-8">Dashboard Overview</h1>
-            {/* --- THIS IS THE REDESIGNED CARD SECTION --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                <StatCard title="Total Members" value={members.length} icon={<Users />} link="#membership" colorClass="indigo" />
-                <StatCard title="Open Bookings" value={stats.openBookings} icon={<Calendar />} link="#booking" colorClass="blue" />
-                <StatCard title="Active Tournaments" value={tournaments.filter(t => t.status !== 'Completed').length} icon={<Trophy />} link="#tournaments" colorClass="orange" />
-                <StatCard title="Net Balance" value={formatCurrency(stats.netBalance)} icon={<DollarSign />} link="#cashflow" colorClass="green" />
+        <div className="p-4 sm:p-6 md:p-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Overview</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white p-6 rounded-xl border border-gray-200"><h3 className="font-semibold text-gray-500">Total Members</h3><p className="text-3xl font-bold text-gray-800 mt-1">{members.length}</p></div>
+                <div className="bg-white p-6 rounded-xl border border-gray-200"><h3 className="font-semibold text-gray-500">Open Bookings</h3><p className="text-3xl font-bold text-gray-800 mt-1">{stats.openBookings}</p></div>
+                <div className="bg-white p-6 rounded-xl border border-gray-200"><h3 className="font-semibold text-gray-500">Active Tournaments</h3><p className="text-3xl font-bold text-gray-800 mt-1">{tournaments.filter(t => t.status !== 'Completed').length}</p></div>
+                <div className="bg-white p-6 rounded-xl border border-gray-200"><h3 className="font-semibold text-gray-500">Total Income</h3><p className="text-3xl font-bold text-green-600 mt-1">{formatCurrency(stats.totalIncome)}</p></div>
             </div>
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl border border-gray-200">
+                <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200">
                     <h3 className="font-semibold text-gray-800 mb-4">Cashflow Trend</h3>
-                     <ResponsiveContainer width="100%" height={300}><LineChart data={cashflowChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" opacity={0.5} /><XAxis dataKey="month" tick={{fill: '#6b7280', fontSize: 12}} stroke="#d1d5db" /><YAxis tickFormatter={value => `${(value/1000)}K`} tick={{fill: '#6b7280', fontSize: 12}} stroke="#d1d5db"/><Tooltip formatter={(value) => formatCurrency(value)} wrapperClassName="!rounded-lg !border-gray-300 shadow-lg" /><Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} /><Line type="monotone" dataKey="income" name="Income" stroke="#4f46e5" strokeWidth={2} activeDot={{ r: 6 }} /><Line type="monotone" dataKey="expenses" name="Expenses" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ResponsiveContainer>
+                     <ResponsiveContainer width="100%" height={300}><LineChart data={cashflowChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" opacity={0.5} /><XAxis dataKey="month" tick={{fill: '#6b7280'}} stroke="#d1d5db" /><YAxis tickFormatter={value => `${(value/1000000)}Jt`} tick={{fill: '#6b7280'}} stroke="#d1d5db"/><Tooltip formatter={(value) => formatCurrency(value)} wrapperClassName="!rounded-lg !border-gray-300 shadow-lg" /><Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} /><Line type="monotone" dataKey="income" name="Income" stroke="#4f46e5" strokeWidth={2} activeDot={{ r: 6 }} /><Line type="monotone" dataKey="expenses" name="Expenses" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ResponsiveContainer>
                 </div>
-                <div className="flex flex-col gap-6">
-                    <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200">
-                         <h3 className="font-semibold text-gray-800 mb-4">Membership Status</h3>
-                          <ResponsiveContainer width="100%" height={120}><PieChart><Pie data={stats.memberStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={50} paddingAngle={5}>{stats.memberStatusData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie><Tooltip formatter={(value, name) => [value, name]} /></PieChart></ResponsiveContainer>
-                        <div className="flex justify-around mt-4 text-xs"><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500"></span>Paid: {stats.paidMembers}</div><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-orange-500"></span>Unpaid: {stats.unpaidMembers}</div></div>
-                    </div>
-                    
-                    {/* --- THIS IS THE NEW "PENDING PAYMENTS" FEATURE --- */}
-                    <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200">
-                         <h3 className="font-semibold text-gray-800 mb-4">Pending Payments</h3>
-                         {unpaidMembersList.length > 0 ? (
-                            <div className="space-y-3">
-                                {unpaidMembersList.map((member) => (
-                                    <div key={member.id} className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
-                                                <User size={14}/>
-                                            </div>
-                                            <span className="font-medium text-gray-700">{member.name}</span>
-                                        </div>
-                                        <a href="#membership" className="text-xs font-semibold text-indigo-600 hover:underline">
-                                            View
-                                        </a>
-                                    </div>
-                                ))}
-                            </div>
-                         ) : (
-                            <p className="text-sm text-gray-500">All member fees are settled. Great job!</p>
-                         )}
-                    </div>
-
-                    <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200">
-                         <h3 className="font-semibold text-gray-800 mb-4">Recent Activities</h3>
-                         <div className="space-y-3">{recentActivities.map((activity, index) => (<div key={index} className="flex items-start gap-3 text-sm"><div className="mt-1 flex-shrink-0">{activity.icon}</div><div className="flex-1"><p className="text-gray-800">{activity.text}</p><p className="text-xs text-gray-500">{formatDate(activity.date)}</p></div></div>))}</div>
-                    </div>
+                <div className="bg-white p-6 rounded-xl border border-gray-200">
+                     <h3 className="font-semibold text-gray-800 mb-4">Membership Status</h3>
+                      <ResponsiveContainer width="100%" height={120}><PieChart><Pie data={stats.memberStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={50} paddingAngle={5}>{stats.memberStatusData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie><Tooltip formatter={(value, name) => [value, name]} /></PieChart></ResponsiveContainer>
+                    <div className="flex justify-around mt-4 text-xs"><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500"></span>Paid: {stats.paidMembers}</div><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-orange-500"></span>Unpaid: {stats.unpaidMembers}</div></div>
+                     <h3 className="font-semibold text-gray-800 mt-6 mb-4">Recent Activities</h3>
+                     <div className="space-y-3">{recentActivities.map((activity, index) => (<div key={index} className="flex items-start gap-3 text-sm"><div className="mt-1">{activity.icon}</div><div className="flex-1"><p className="text-gray-800">{activity.text}</p><p className="text-xs text-gray-500">{formatDate(activity.date)}</p></div></div>))}</div>
                 </div>
             </div>
         </div>
@@ -367,110 +272,27 @@ const Booking = ({ bookings, setBookings }) => {
         </div>
     );
 };
-// REPLACE the old Cashflow component in App.js with this new, enhanced version.
 const Cashflow = ({ transactions, setTransactions }) => {
     const [showModal, setShowModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [deletingTransaction, setDeletingTransaction] = useState(null);
-    const [selectedMonth, setSelectedMonth] = useState('all');
-
-    // Create a list of unique months from transactions for the filter dropdown
-    const monthOptions = useMemo(() => {
-        const months = new Set(transactions.map(t => t.date.substring(0, 7))); // 'YYYY-MM'
-        return Array.from(months).map(monthStr => {
-            const date = new Date(monthStr + '-02'); // Use day 2 to avoid timezone issues
-            return {
-                value: monthStr,
-                label: date.toLocaleString('en-US', { month: 'long', year: 'numeric' })
-            };
-        });
-    }, [transactions]);
-
-    // Filter transactions based on the selected month
-    const filteredTransactions = useMemo(() => {
-        if (selectedMonth === 'all') {
-            return transactions;
-        }
-        return transactions.filter(t => t.date.substring(0, 7) === selectedMonth);
-    }, [transactions, selectedMonth]);
-
-    // Calculate totals based on the *filtered* transactions
-    const { totalIncome, totalExpense, netBalance } = useMemo(() => {
-        const income = filteredTransactions
-            .filter(t => t.type === 'Income')
-            .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
-        const expense = filteredTransactions
-            .filter(t => t.type === 'Expense')
-            .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
-        return { totalIncome: income, totalExpense: expense, netBalance: income - expense };
-    }, [filteredTransactions]);
-
-
+    const totalIncome = useMemo(() => transactions.filter(t => t.type === 'Income').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0), [transactions]);
+    const totalExpense = useMemo(() => transactions.filter(t => t.type === 'Expense').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0), [transactions]);
+    
     const handleExport = () => {
-        const doc = new jsPDF();
-        const reportTitle = "Cashflow Report";
-        const monthLabel = selectedMonth === 'all' ? 'All Time' : monthOptions.find(m => m.value === selectedMonth)?.label || '';
-        const generatedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-        // --- PDF Header ---
-        doc.setFontSize(18);
-        doc.setTextColor('#1e3a8a'); // Dark Blue
-        doc.text("Badminton Pro Club", 14, 22);
-        doc.setFontSize(12);
-        doc.setTextColor('#1f2937'); // Dark Gray
-        doc.text(reportTitle, 14, 30);
-        doc.setFontSize(10);
-        doc.setTextColor('#6b7280'); // Lighter Gray
-        doc.text(`Period: ${monthLabel}`, 14, 36);
-
-        // --- Data Table ---
-        autoTable(doc, {
-            startY: 45,
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF.prototype.autoTable === 'undefined') {
+            alert('PDF generation library is still loading. Please wait a moment and try again.');
+            console.error('jsPDF or the autoTable plugin is not ready.');
+            return;
+        }
+        const doc = new window.jspdf.jsPDF();
+        doc.text("Cashflow Report", 14, 16);
+        doc.autoTable({
+            startY: 20,
             head: [['Date', 'Description', 'Type', 'Amount']],
-            body: filteredTransactions.map(t => [formatDate(t.date), t.description, t.type, formatCurrency(t.amount)]),
-            theme: 'striped',
-            headStyles: {
-                fillColor: '#312e81', // Indigo
-                textColor: '#ffffff'
-            },
-            styles: {
-                font: 'helvetica',
-                fontSize: 9
-            },
-            // Add a footer to each page
-            didDrawPage: (data) => {
-                const pageCount = doc.internal.getNumberOfPages();
-                doc.setFontSize(8);
-                doc.setTextColor('#6b7280');
-                doc.text(`Generated on: ${generatedDate}`, 14, doc.internal.pageSize.height - 10);
-                doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.width - 35, doc.internal.pageSize.height - 10);
-            }
+            body: transactions.map(t => [formatDate(t.date), t.description, t.type, formatCurrency(t.amount)])
         });
-
-        // --- Summary Section ---
-        let finalY = doc.lastAutoTable.finalY; // Get Y position of the last table
-        doc.setFontSize(12);
-        doc.text("Financial Summary", 14, finalY + 15);
-
-        // Total Income
-        doc.setFontSize(10);
-        doc.setTextColor('#166534'); // Green
-        doc.text("Total Income:", 14, finalY + 22);
-        doc.text(formatCurrency(totalIncome), 60, finalY + 22);
-
-        // Total Expense
-        doc.setTextColor('#be123c'); // Red
-        doc.text("Total Expense:", 14, finalY + 28);
-        doc.text(formatCurrency(totalExpense), 60, finalY + 28);
-
-        // Net Balance
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor('#1e3a8a'); // Dark Blue
-        doc.text("Net Balance:", 14, finalY + 36);
-        doc.text(formatCurrency(netBalance), 60, finalY + 36);
-
-        doc.save(`cashflow-report-${selectedMonth}.pdf`);
+        doc.save('cashflow-report.pdf');
     };
 
     const handleFormSubmit = async (e) => {
@@ -483,58 +305,24 @@ const Cashflow = ({ transactions, setTransactions }) => {
             } else {
                 const response = await fetch(`${API_BASE_URL}/api/cashflow`, {method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(transactionData)});
                 const newTransaction = await response.json();
-                setTransactions([newTransaction, ...transactions].sort((a,b) => new Date(b.date) - new Date(a.date)));
+                setTransactions([newTransaction, ...transactions].sort((a,b) => new Date(b.date) - new Date(a.date))); 
             }
         } catch (error) { console.error("Error saving transaction", error) }
         finally { setShowModal(false); setEditingTransaction(null); }
     };
-
-    const handleDelete = async (id) => {
+    const handleDelete = async (id) => { 
+        // Example for DELETE, assuming you add it to your backend
         try {
             await fetch(`${API_BASE_URL}/api/cashflow/${id}`, { method: 'DELETE' });
             setTransactions(transactions.filter(t => t.id !== id));
         } catch(err) { console.error(err); }
         finally { setDeletingTransaction(null); }
     };
-
     return (
         <div className="p-4 sm:p-6 md:p-8">
-            <PageHeader title="Cashflow">
-                 <div className="flex items-center gap-4">
-                    <div>
-                        <label htmlFor="month-filter" className="sr-only">Filter by Month</label>
-                        <select
-                            id="month-filter"
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="all">All Time</option>
-                            {monthOptions.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <button onClick={() => { setEditingTransaction(null); setShowModal(true); }} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold text-sm"><PlusCircle size={18} /> Add Transaction</button>
-                    <button onClick={handleExport} className="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold text-sm"><Download size={18} /> Export PDF</button>
-                </div>
-            </PageHeader>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-green-50 p-6 rounded-xl"><h3 className="text-green-800 font-semibold">Total Income</h3><p className="text-2xl font-bold text-green-600 mt-2">{formatCurrency(totalIncome)}</p></div>
-                <div className="bg-orange-50 p-6 rounded-xl"><h3 className="text-orange-800 font-semibold">Total Expense</h3><p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(totalExpense)}</p></div>
-                <div className="bg-indigo-50 p-6 rounded-xl"><h3 className="text-indigo-800 font-semibold">Net Balance</h3><p className="text-2xl font-bold text-indigo-600 mt-2">{formatCurrency(netBalance)}</p></div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50"><tr className="border-b"><th className="p-4 text-left font-semibold text-gray-600">Date</th><th className="p-4 text-left font-semibold text-gray-600">Description</th><th className="p-4 text-left font-semibold text-gray-600">Type</th><th className="p-4 text-right font-semibold text-gray-600">Amount</th><th className="p-4 text-left font-semibold text-gray-600">Actions</th></tr></thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {filteredTransactions.map(t => (<tr key={t.id}><td className="p-4 text-gray-600">{formatDate(t.date)}</td><td className="p-4 font-medium text-gray-800">{t.description}</td><td className="p-4"><span className={`font-semibold text-xs ${t.type === 'Income' ? 'text-green-700' : 'text-orange-700'}`}>{t.type}</span></td><td className={`p-4 text-right font-mono ${t.type === 'Income' ? 'text-green-600' : 'text-orange-600'}`}>{formatCurrency(t.amount)}</td><td className="p-4 flex gap-2"><button onClick={() => { setEditingTransaction(t); setShowModal(true); }} className="text-gray-500 hover:text-indigo-600 p-1.5 rounded-md"><Edit size={16}/></button><button onClick={() => setDeletingTransaction(t)} className="text-gray-500 hover:text-red-600 p-1.5 rounded-md"><Trash2 size={16}/></button></td></tr>))}
-                    </tbody>
-                </table>
-            </div>
-
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8"><h1 className="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Cashflow</h1><div className="flex gap-3"><button onClick={() => { setEditingTransaction(null); setShowModal(true); }} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold text-sm"><PlusCircle size={18} /> Add Transaction</button><button onClick={handleExport} className="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold text-sm"><Download size={18} /> Export PDF</button></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"><div className="bg-green-50 p-6 rounded-xl"><h3 className="text-green-800 font-semibold">Total Income</h3><p className="text-2xl font-bold text-green-600 mt-2">{formatCurrency(totalIncome)}</p></div><div className="bg-orange-50 p-6 rounded-xl"><h3 className="text-orange-800 font-semibold">Total Expense</h3><p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(totalExpense)}</p></div><div className="bg-indigo-50 p-6 rounded-xl"><h3 className="text-indigo-800 font-semibold">Net Balance</h3><p className="text-2xl font-bold text-indigo-600 mt-2">{formatCurrency(totalIncome - totalExpense)}</p></div></div>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50"><tr className="border-b"><th className="p-4 text-left font-semibold text-gray-600">Date</th><th className="p-4 text-left font-semibold text-gray-600">Description</th><th className="p-4 text-left font-semibold text-gray-600">Type</th><th className="p-4 text-right font-semibold text-gray-600">Amount</th><th className="p-4 text-left font-semibold text-gray-600">Actions</th></tr></thead><tbody className="divide-y divide-gray-200">{transactions.map(t => (<tr key={t.id}><td className="p-4 text-gray-600">{formatDate(t.date)}</td><td className="p-4 font-medium text-gray-800">{t.description}</td><td className="p-4"><span className={`font-semibold text-xs ${t.type === 'Income' ? 'text-green-700' : 'text-orange-700'}`}>{t.type}</span></td><td className={`p-4 text-right font-mono ${t.type === 'Income' ? 'text-green-600' : 'text-orange-600'}`}>{formatCurrency(t.amount)}</td><td className="p-4 flex gap-2"><button onClick={() => { setEditingTransaction(t); setShowModal(true); }} className="text-gray-500 hover:text-indigo-600 p-1.5 rounded-md"><Edit size={16}/></button><button onClick={() => setDeletingTransaction(t)} className="text-gray-500 hover:text-red-600 p-1.5 rounded-md"><Trash2 size={16}/></button></td></tr>))}</tbody></table></div>
             {showModal && <Modal onClose={() => { setShowModal(false); setEditingTransaction(null); }} title={editingTransaction ? 'Edit Transaction' : 'Add Transaction'}><form onSubmit={handleFormSubmit} className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-700 mb-1">Type</label><select name="type" defaultValue={editingTransaction?.type} className="w-full p-2.5 border border-gray-300 rounded-lg bg-white"><option value="Income">Income</option><option value="Expense">Expense</option></select></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Date</label><input type="date" name="date" defaultValue={editingTransaction?.date || new Date().toISOString().split('T')[0]} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Description</label><input type="text" name="description" defaultValue={editingTransaction?.description} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div><label className="block text-sm font-medium text-gray-700 mb-1">Amount (Rp)</label><input type="number" step="1" name="amount" defaultValue={editingTransaction?.amount} className="w-full p-2.5 border border-gray-300 rounded-lg" required /></div><div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => { setShowModal(false); setEditingTransaction(null); }} className="bg-gray-100 text-gray-800 px-5 py-2.5 rounded-lg font-semibold text-sm">Cancel</button><button type="submit" className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-semibold text-sm">Save</button></div></form></Modal>}
             {deletingTransaction && <ConfirmationModal title="Delete Transaction" message={`Are you sure you want to delete this transaction?`} onConfirm={() => handleDelete(deletingTransaction.id)} onCancel={() => setDeletingTransaction(null)} />}
         </div>
@@ -704,46 +492,25 @@ const CreateTournamentModal = ({ onClose, onCreate, members }) => {
         </Modal>
     );
 };
-// REPLACE the existing TournamentBracket component with this enhanced version.
 const TournamentBracket = ({ tournament, setTournament, onBack }) => {
     const [bracket, setBracket] = useState(tournament.bracket);
-    // STATE: For mobile view, track the current round index
-    const [currentRound, setCurrentRound] = useState(0);
-    // STATE: For determining which view to render
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-    useEffect(() => {
-        // This effect detects screen size changes to switch between mobile and desktop views
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
+    
     useEffect(() => {
         setBracket(tournament.bracket);
-        // Reset to the first round if the tournament data changes
-        setCurrentRound(0);
     }, [tournament.bracket]);
 
-    // This effect automatically creates the next round when the current one is complete
     useEffect(() => {
         if (!Array.isArray(bracket) || bracket.length === 0) return;
         const lastRound = bracket[bracket.length - 1];
         if (!Array.isArray(lastRound)) return;
 
         const winners = lastRound.map(match => match.winner).filter(Boolean);
-        // Check if all matches in the last round have a winner and it's not the final match
-        if (winners.length > 0 && winners.length === lastRound.length && winners.length > 1) {
-             // If the bracket is balanced, create the next round
-            if (winners.length % 2 === 0) {
-                const nextRound = [];
-                for (let i = 0; i < winners.length; i += 2) { 
-                    nextRound.push({ matchId: `r${bracket.length}-m${i/2}`, team1: winners[i], team2: winners[i+1], winner: null });
-                }
-                setBracket(prevBracket => [...prevBracket, nextRound]);
+        if (winners.length > 0 && winners.length === lastRound.length && winners.length > 1 && winners.length % 2 === 0) {
+            const nextRound = [];
+            for (let i = 0; i < winners.length; i += 2) { 
+                nextRound.push({ matchId: `r${bracket.length}-m${i/2}`, team1: winners[i], team2: winners[i+1], winner: null });
             }
+            setBracket(prevBracket => [...prevBracket, nextRound]);
         }
     }, [bracket]);
 
@@ -753,123 +520,42 @@ const TournamentBracket = ({ tournament, setTournament, onBack }) => {
         
         const updatedTournament = { ...tournament, bracket: newBracket };
         
-        // Determine if the tournament is completed
-        const finalRound = newBracket[newBracket.length - 1];
-        const isCompleted = finalRound.length === 1 && finalRound[0].winner;
-
-        if (isCompleted) {
+        if (roundIndex === newBracket.length - 1 && newBracket[newBracket.length - 1].every(m => m.winner)) {
             updatedTournament.status = 'Completed';
         } else {
             updatedTournament.status = 'In Progress';
         }
         
-        setTournament(updatedTournament); // This triggers the API call in the parent
+        setTournament(updatedTournament); // API call
     };
-
-    const MatchCard = ({ match, roundIndex, matchIndex }) => (
-        <div className="bg-white p-2.5 rounded-lg border border-gray-200 relative shadow-sm">
-           <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-               Match {matchIndex + 1}
-           </div>
-           <div className="flex flex-col gap-1 text-sm">
-            {[match.team1, match.team2].map((team, teamIndex) => {
-                if (!team) return null; // Handle cases where a team might be null temporarily
-                const isWinner = match.winner?.id === team.id;
-                const canSetWinner = !match.winner && team.name !== 'BYE' && tournament.status !== 'Completed';
-
-                return (
-                    <div 
-                        key={teamIndex} 
-                        onClick={() => canSetWinner && setWinner(roundIndex, matchIndex, team)} 
-                        className={`
-                            flex justify-between items-center p-2 rounded-md transition-all
-                            ${canSetWinner ? 'cursor-pointer hover:bg-indigo-50' : ''} 
-                            ${isWinner ? 'bg-green-100' : ''}
-                        `}
-                    >
-                        <div>
-                            <span className={`
-                                ${isWinner ? 'font-bold text-green-800' : 'text-gray-700'}
-                                ${team.name === 'BYE' ? 'text-gray-400' : ''}
-                            `}>
-                                {team.name}
-                            </span>
-                            {Array.isArray(team.players) && team.players.length > 1 && 
-                                <div className="text-xs text-gray-500 mt-0.5">{team.players.map(p => p.name).join(' & ')}</div>
-                            }
-                        </div>
-                        {isWinner && <span className="text-xs text-white bg-green-500 px-2 py-0.5 rounded-full font-bold">WIN</span>}
-                    </div>
-                );
-            })}
-            </div>
-        </div>
-    );
     
-    // RENDER FUNCTION for the paginated mobile view
-    const renderMobileView = () => (
-        <div className="flex flex-col">
-            <h3 className="font-bold text-center text-gray-500 text-sm uppercase tracking-wider mb-8">
-                Round {currentRound + 1}
-            </h3>
-            <div className="flex flex-col gap-8">
-                {Array.isArray(bracket[currentRound]) && bracket[currentRound].map((match, matchIndex) => (
-                    <MatchCard key={match.matchId} match={match} roundIndex={currentRound} matchIndex={matchIndex} />
+    return (
+        <div className="p-4 sm:p-6 md:p-8">
+            <div className="flex items-center mb-6"><button onClick={onBack} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg mr-4">&larr; Back</button><div><h1 className="text-3xl font-bold text-gray-800">{tournament.name}</h1><p className="text-gray-500">{tournament.type} - {tournament.status}</p></div></div>
+            <div className="flex gap-8 overflow-x-auto pb-4">
+                {Array.isArray(bracket) && bracket.map((round, roundIndex) => (
+                    <div key={roundIndex} className="flex flex-col gap-6 min-w-[300px] pt-8">
+                        <h3 className="font-bold text-center text-gray-500 text-sm uppercase tracking-wider">Round {roundIndex + 1}</h3>
+                        {Array.isArray(round) && round.map((match, matchIndex) => (
+                            <div key={match.matchId} className="bg-white p-3 rounded-lg border border-gray-200 relative">
+                               <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Match {matchIndex+1}</div>
+                               <div className="flex flex-col gap-1 text-sm">
+                                {[match.team1, match.team2].map((team, teamIndex) => team && (
+                                    <div key={teamIndex} onClick={() => team.name !== 'BYE' && !match.winner && setWinner(roundIndex, matchIndex, team)} className={`flex justify-between items-center p-2 rounded-md ${!match.winner && team.name !== 'BYE' ? 'cursor-pointer hover:bg-indigo-50' : ''} ${match.winner?.id === team.id ? 'bg-green-100' : ''}`}>
+                                        <div>
+                                            <span className={`${match.winner?.id === team.id ? 'font-bold text-green-800' : 'text-gray-700'}`}>{team.name}</span>
+                                            {Array.isArray(team.players) && team.players.length > 1 && <div className="text-xs text-gray-500 mt-1">{team.players.map(p => p.name).join(' & ')}</div>}
+                                            {team.name === 'BYE' && <span className="text-xs text-gray-400">(BYE)</span>}
+                                        </div>
+                                        {match.winner?.id === team.id && <span className="text-xs text-white bg-green-500 px-2 py-0.5 rounded-full font-bold">WIN</span>}
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 ))}
             </div>
-            {/* Mobile Navigation */}
-            <div className="mt-8 flex items-center justify-between">
-                <button 
-                    onClick={() => setCurrentRound(r => r - 1)}
-                    disabled={currentRound === 0}
-                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <ChevronLeft size={16} /> Previous
-                </button>
-                <span className="text-sm font-medium text-gray-600">
-                    {currentRound + 1} / {bracket.length}
-                </span>
-                <button 
-                    onClick={() => setCurrentRound(r => r + 1)}
-                    disabled={currentRound >= bracket.length - 1}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Next <ChevronRight size={16} />
-                </button>
-            </div>
-        </div>
-    );
-
-    // RENDER FUNCTION for the horizontally scrollable desktop view
-    const renderDesktopView = () => (
-        <div className="flex gap-8 overflow-x-auto pb-4">
-            {Array.isArray(bracket) && bracket.map((round, roundIndex) => (
-                <div key={roundIndex} className="flex flex-col gap-10 min-w-[300px] pt-8">
-                    <h3 className="font-bold text-center text-gray-500 text-sm uppercase tracking-wider">
-                        Round {roundIndex + 1}
-                    </h3>
-                    {Array.isArray(round) && round.map((match, matchIndex) => (
-                       <MatchCard key={match.matchId} match={match} roundIndex={roundIndex} matchIndex={matchIndex} />
-                    ))}
-                </div>
-            ))}
-        </div>
-    );
-
-    return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <div className="flex items-center mb-6">
-                <button onClick={onBack} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg mr-4 flex items-center">
-                    <ChevronLeft size={20}/> <span className="hidden sm:inline ml-1">Back</span>
-                </button>
-                <div>
-                    <h1 className="text-xl sm:text-3xl font-bold text-gray-800">{tournament.name}</h1>
-                    <p className="text-gray-500">{tournament.type} - {tournament.status}</p>
-                </div>
-            </div>
-
-            {/* Conditionally render the correct view based on screen size */}
-            {isMobile ? renderMobileView() : renderDesktopView()}
         </div>
     );
 };
@@ -914,201 +600,28 @@ const ScoreCounter = () => {
         </div>
     );
 };
-const LoginPage = ({ onLogin, error }) => {
-    const [username, setUsername] = useState('admin');
-    const [password, setPassword] = useState('');
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onLogin(username, password);
-    };
-
-    return (
-        <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center justify-center gap-2">🏸 Badminton Pro</h1>
-                    <p className="text-gray-500 mt-2 text-sm">Admin Login</p>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="username">Username</label>
-                        <input
-                            className="w-full p-2.5 border border-gray-300 rounded-lg"
-                            type="text"
-                            id="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">Password</label>
-                        <input
-                            className="w-full p-2.5 border border-gray-300 rounded-lg"
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter password"
-                            required
-                        />
-                    </div>
-                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">Login</button>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-// REPLACE the old LandingPage component in App.js with this new, enhanced version.
-const LandingPage = ({ onAdminLogin }) => {
-    useEffect(() => {
-        document.title = "Badminton Pro | Jakarta's Premier Badminton Club & Court Booking";
-        // Create or update the meta description tag
-        let metaDesc = document.querySelector('meta[name="description"]');
-        if (!metaDesc) {
-            metaDesc = document.createElement('meta');
-            metaDesc.setAttribute('name', 'description');
-            document.head.appendChild(metaDesc);
-        }
-        metaDesc.setAttribute('content', 'Join Badminton Pro, the top badminton club in Jakarta. We offer modern court facilities, professional coaching, competitive tournaments, and a vibrant community for all skill levels.');
-
-        // Optional: Cleanup function to reset title when the component unmounts
-        return () => {
-            document.title = 'Badminton Pro'; // Or your default app title
-        };
-    }, []); // Empty dependency array means this runs only once on mount
-    return (
-    <div className="bg-white text-gray-800 font-sans antialiased">
-        {/* --- Header --- */}
-        <header className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-gray-200">
-            <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">🏸 Badminton Pro</h1>
-                <nav className="hidden md:flex gap-8 items-center text-sm font-semibold">
-                    <a href="#about" className="hover:text-indigo-600 transition-colors">About</a>
-                    <a href="#programs" className="hover:text-indigo-600 transition-colors">Programs</a>
-                    <a href="#contact" className="hover:text-indigo-600 transition-colors">Contact</a>
-                </nav>
-                <a href="#contact" className="hidden md:inline-block bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 text-sm font-semibold shadow-sm">
-                    Become a Member
-                </a>
-            </div>
-        </header>
-
-        {/* --- Full-Screen Hero Section --- */}
-        <section className="relative h-screen text-white flex items-center justify-center">
-            {/* The background image is the same as before */}
-            <img src="https://images.unsplash.com/photo-1750008267598-7f68e1a25ab8?q=80&w=2070&auto=format&fit=crop" alt="Badminton action" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <div className="text-center px-4 animate-fade-in">
-                    {/* The heading and paragraph are the same as before */}
-                    <h2 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">Unleash Your Inner Champion</h2>
-                    <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto">Join a vibrant community of passionate players. All skill levels welcome.</p>
-                    <a href="#programs" className="mt-8 inline-block bg-white text-indigo-700 font-bold py-3 px-8 rounded-full hover:bg-gray-200 transition-transform hover:scale-105">
-                        Explore Programs
-                    </a>
-                </div>
-            </div>
-        </section>
-        
-        {/* --- About/Features Section --- */}
-        <section id="about" className="py-20 bg-gray-50">
-            <div className="container mx-auto px-6 text-center">
-                <h3 className="text-3xl font-bold mb-4">The Premier Badminton Experience</h3>
-                <p className="text-gray-600 max-w-3xl mx-auto mb-12">We are dedicated to providing the best facilities, a welcoming community, and opportunities for players of every level to thrive.</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="p-8 bg-white rounded-xl shadow-md border">
-                        <Trophy size={40} className="mx-auto text-indigo-500 mb-4" />
-                        <h4 className="font-bold text-lg mb-2">Modern Facilities</h4>
-                        <p className="text-sm text-gray-600">Professional-grade courts with excellent lighting and amenities to ensure the best playing conditions.</p>
-                    </div>
-                    <div className="p-8 bg-white rounded-xl shadow-md border">
-                        <Users size={40} className="mx-auto text-indigo-500 mb-4" />
-                        <h4 className="font-bold text-lg mb-2">Vibrant Community</h4>
-                        <p className="text-sm text-gray-600">Connect with fellow badminton enthusiasts, find hitting partners, and join our regular social events.</p>
-                    </div>
-                    <div className="p-8 bg-white rounded-xl shadow-md border">
-                        <BarChart2 size={40} className="mx-auto text-indigo-500 mb-4" />
-                        <h4 className="font-bold text-lg mb-2">All Skill Levels</h4>
-                        <p className="text-sm text-gray-600">From absolute beginners to advanced competitors, we offer programs and events tailored to you.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {/* --- Programs Section --- */}
-        <section id="programs" className="py-20">
-            <div className="container mx-auto px-6 text-center">
-                <h3 className="text-3xl font-bold mb-12">Find Your Perfect Game</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div className="border rounded-lg p-6 hover:shadow-xl transition-shadow">
-                        <h4 className="font-bold text-xl mb-2">Casual Play</h4>
-                        <p className="text-gray-600">Book a court and enjoy a friendly game with your friends and family.</p>
-                    </div>
-                    <div className="border rounded-lg p-6 hover:shadow-xl transition-shadow">
-                        <h4 className="font-bold text-xl mb-2">Tournaments</h4>
-                        <p className="text-gray-600">Test your skills in our monthly singles, doubles, and mixed-doubles tournaments.</p>
-                    </div>
-                    <div className="border rounded-lg p-6 hover:shadow-xl transition-shadow">
-                        <h4 className="font-bold text-xl mb-2">Leagues</h4>
-                        <p className="text-gray-600">Join a competitive league for a season of structured and challenging matches.</p>
-                    </div>
-                    <div className="border rounded-lg p-6 hover:shadow-xl transition-shadow">
-                        <h4 className="font-bold text-xl mb-2">Coaching</h4>
-                        <p className="text-gray-600">Private and group lessons available from our certified professional coaches.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {/* --- Footer --- */}
-        <footer id="contact" className="bg-gray-800 text-white">
-            <div className="container mx-auto px-6 py-16">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-                    <div>
-                        <h3 className="text-lg font-bold mb-4">Badminton Pro</h3>
-                        <p className="text-gray-400 text-sm">Your destination for all things badminton in Jakarta.</p>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold mb-4">Contact Us</h3>
-                        <p className="text-gray-400 text-sm">123 Badminton Ave, Jakarta, Indonesia</p>
-                        <p className="text-gray-400 text-sm">contact@badmintonpro.com</p>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold mb-4">Follow Us</h3>
-                        <div className="flex justify-center md:justify-start gap-6">
-                            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">Instagram</a>
-                            <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">TikTok</a>
-                        </div>
-                    </div>
-                </div>
-                <div className="mt-12 border-t border-gray-700 pt-6 flex flex-col sm:flex-row justify-between items-center text-sm">
-                    <p className="text-gray-500 mb-4 sm:mb-0">&copy; {new Date().getFullYear()} Badminton Pro. All Rights Reserved.</p>
-                    <button onClick={onAdminLogin} className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-xs font-semibold">
-                        Admin Login
-                    </button>
-                </div>
-            </div>
-        </footer>
+const LoginPage = ({ onLogin }) => (
+    <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4"><div className="w-full max-w-sm bg-white rounded-xl border border-gray-200 shadow-sm p-8"><div className="text-center mb-8"><h1 className="text-2xl font-bold text-gray-800 flex items-center justify-center gap-2">🏸 Badminton Pro</h1><p className="text-gray-500 mt-2 text-sm">Admin Login</p></div><form onSubmit={(e) => { e.preventDefault(); onLogin(); }} className="space-y-6"><div><label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="username">Username</label><input className="w-full p-2.5 border border-gray-300 rounded-lg" type="text" id="username" defaultValue="admin" /></div><div><label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">Password</label><input className="w-full p-2.5 border border-gray-300 rounded-lg" type="password" id="password" defaultValue="password" /></div><button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg">Login</button></form></div></div>
+);
+const LandingPage = ({ onAdminLogin }) => (
+    <div className="bg-white text-gray-700">
+        <header className="sticky top-0 bg-white/80 backdrop-blur-md z-40 border-b border-gray-200"><div className="container mx-auto px-6 py-4 flex justify-between items-center"><h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">🏸 Badminton Pro</h1><nav className="hidden md:flex gap-6 items-center"><a href="#about" className="hover:text-indigo-600">About Us</a><a href="#programs" className="hover:text-indigo-600">Programs</a></nav><button onClick={onAdminLogin} className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 text-sm font-semibold shadow-sm">Admin Login</button></div></header>
+        <section className="relative h-[60vh] md:h-[80vh] text-white"><img src="https://images.unsplash.com/photo-1595194387532-044a8456396b?q=80&w=2070&auto=format&fit=crop" alt="Badminton action" className="w-full h-full object-cover"/><div className="absolute inset-0 bg-black/50 flex items-center justify-center"><div className="text-center px-4"><h2 className="text-4xl md:text-6xl font-extrabold mb-4">Unleash Your Inner Champion</h2><p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto">Join a vibrant community of passionate players. All skill levels welcome.</p><a href="#programs" className="mt-8 inline-block bg-white text-indigo-700 font-bold py-3 px-8 rounded-full hover:bg-gray-200">Explore Programs</a></div></div></section>
+        <footer id="contact" className="bg-gray-800 text-white py-16"><div className="container mx-auto px-6 text-center"><h3 className="text-2xl font-bold mb-4">Ready to Play?</h3><p className="mb-8">Visit us or get in touch to start your badminton journey today.</p><p>123 Badminton Ave, Jakarta, Indonesia</p><p>contact@badmintonpro.com</p><div className="mt-8"><a href="#" className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-full hover:bg-indigo-500">Become a Member</a></div></div></footer>
     </div>
-    );
-};
+);
 
 // --- Main App Component ---
 export default function App() {
     const [page, setPage] = useState(window.location.hash.substring(1) || 'landing');
-    // const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
+    const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [loginError, setLoginError] = useState('');
 
     // State for all data, now fetched from API
     const [members, setMembers] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [tournaments, setTournaments] = useState([]);
-    const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
     
     // Fetch all data from the API on initial load or when auth state changes
     useEffect(() => {
@@ -1173,33 +686,14 @@ export default function App() {
         };
     }, []);
 
-    const handleLogin = async (username, password) => {
-        setLoginError(''); // Clear previous errors
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Login failed');
-            }
-
-            const { token } = await response.json();
-            localStorage.setItem('token', token); // Store the token
-            setIsAuthenticated(true);
-            window.location.hash = 'dashboard';
-
-        } catch (error) {
-            console.error("Login error:", error);
-            setLoginError(error.message);
-        }
+    const handleLogin = () => { 
+        localStorage.setItem('isAuthenticated', 'true');
+        setIsAuthenticated(true); 
+        window.location.hash = 'dashboard';
     };
-    const handleLogout = () => {
-        localStorage.removeItem('token'); // Remove the token
-        setIsAuthenticated(false);
+    const handleLogout = () => { 
+        localStorage.removeItem('isAuthenticated');
+        setIsAuthenticated(false); 
         window.location.hash = 'landing';
     };
     
@@ -1216,23 +710,16 @@ export default function App() {
     };
 
     if (!isAuthenticated) {
-        // Pass the error state and handler to LoginPage
-        if (page === 'login') return <LoginPage onLogin={handleLogin} error={loginError} />;
-        return <LandingPage onAdminLogin={() => window.location.hash = 'login'} />
+        if (page === 'login') return <LoginPage onLogin={handleLogin} />;
+        return <LandingPage onAdminLogin={() => window.location.hash = 'login'} /> 
     }
     
     return (
-        <div className="bg-gray-50 min-h-screen font-sans">
-            <div className="flex">
-                <Sidebar page={page} handleLogout={handleLogout} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-                <div className="flex-1 flex flex-col h-screen">
-                    {/* The new header is rendered here */}
-                    <Header setIsOpen={setIsSidebarOpen} />
-                    <main className="flex-1 overflow-y-auto">
-                        {renderPage()}
-                    </main>
-                </div>
-            </div>
+        <div className="flex bg-gray-50 min-h-screen font-sans">
+            <Sidebar page={page} handleLogout={handleLogout} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+            <main className="flex-1 transition-all duration-300 ease-in-out overflow-y-auto">
+                {renderPage()}
+            </main>
         </div>
     );
 }
