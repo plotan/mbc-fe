@@ -30,7 +30,28 @@ const staticCashflowChartData = [
     { month: 'Mar', income: 2000000, expenses: 9800000 }, { month: 'Apr', income: 2780000, expenses: 3908000 },
     { month: 'May', income: 1890000, expenses: 4800000 }, { month: 'Jun', income: 2390000, expenses: 3800000 },
 ];
-const teamNamePool = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet', 'Kilo', 'Lima', 'Mike', 'November', 'Oscar', 'Papa'];
+const teamNamePool = [
+    'Harimau',       // Tiger  
+    'Gajah',         // Elephant  
+    'Elang',         // Eagle  
+    'Kuda',          // Horse  
+    'Singa',         // Lion  
+    'Beruang',       // Bear  
+    'Kancil',        // Mouse deer  
+    'Lumba-lumba',   // Dolphin  
+    'Kucing',        // Cat  
+    'Buaya',         // Crocodile  
+    'Ular',          // Snake  
+    'Rusa',          // Deer  
+    'Komodo',        // Komodo dragon  
+    'Kupu-kupu',     // Butterfly  
+    'Penyu',         // Turtle  
+    'Flamingo',      // Flamingo  
+    'Panda',         // Panda  
+    'Koala',         // Koala  
+    'Burung Hantu'   // Owl
+  ];
+  
 // NEW: Add this reusable StatCard component before the Dashboard component.
 const StatCard = ({ title, value, icon, link, colorClass }) => {
     const colors = {
